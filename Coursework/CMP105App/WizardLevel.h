@@ -52,9 +52,9 @@ private:
 	sf::Font font;
 	std::vector<sf::Text> controls;
 	sf::Vector2i start = { 0,0 };
-	sf::Vector2i end = { 19, 9 };
+	sf::Vector2i end = { 14, 14 };
 	sf::Vector2i checkPoint{ 10, 4 };
-	sf::Vector2i boardDimensions{ 20,10 };
+	sf::Vector2i boardDimensions{ 15,15 };
 	bool checkPointEnabled = false;
 	bool stepFailed = false;
 	std::vector<char> currentControls = { 'W', 'A', 'S', 'D' };
@@ -79,4 +79,3 @@ private:
 	int misses = 0;
 	int deaths = 0;
 };
-

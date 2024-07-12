@@ -28,8 +28,8 @@ WizardLevel::WizardLevel(sf::RenderWindow* hwnd, Input* in, GameState* gs, Audio
 	boardTop = windowHeight * 0.05;	// the board is as wide as can be with the given constants.
 	boardLeft = boardTop;	// uniform top and side padding.
 	boardRight = windowWidth - boardLeft;
-	int numRows = 10;
-	int numCols = 20;
+	int numRows = 15;
+	int numCols = 15;
 	cellDim = (boardRight - boardLeft) / numCols;
 	boardBottom = numRows * cellDim + boardTop;
 	// ensure grid does not take up too much of the sapce
@@ -112,8 +112,8 @@ WizardLevel::WizardLevel(sf::RenderWindow* hwnd, Input* in, GameState* gs, Audio
 	}
 
 	lecturer = new LecturEH(textMan);
-	lecturer->setSize(sf::Vector2f(window->getSize().y*0.2, window->getSize().y * 0.2));
-	lecturer->setPosition(window->getSize().x * 0.7, window->getSize().y*0.65);
+	lecturer->setSize(sf::Vector2f(window->getSize().y * 0.2, window->getSize().y * 0.2));
+	lecturer->setPosition(window->getSize().x * 0.7, window->getSize().y * 0.65);
 }
 
 WizardLevel::~WizardLevel() {}
@@ -132,101 +132,53 @@ void WizardLevel::handleInput(float dt)
 	float timeLeft = TIME_PER_STEP - timeInStep;
 	if (timeLeft > TIME_BUFFER && timeLeft < TIME_BUFFER + TIME_FOR_ACTION && !stepFailed)
 	{
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-		{
-			if (currentControls[0] == 'A')
-			{
-				selectedAction = UP;
+
+		if (sf::Keyboard::isKeyPressed) {
+			char inputChar = ' ';
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+				inputChar = 'A';
 			}
-			if (currentControls[1] == 'A')
-			{
-				selectedAction = LEFT;
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+				inputChar = 'W';
 			}
-			if (currentControls[2] == 'A')
-			{
-				selectedAction = DOWN;
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+				inputChar = 'D';
 			}
-			if (currentControls[3] == 'A')
-			{
-				selectedAction = RIGHT;
+			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+				inputChar = 'S';
 			}
-		}
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-		{
-			if (currentControls[0] == 'W')
-			{
-				selectedAction = UP;
-			}
-			if (currentControls[1] == 'W')
-			{
-				selectedAction = LEFT;
-			}
-			if (currentControls[2] == 'W')
-			{
-				selectedAction = DOWN;
-			}
-			if (currentControls[3] == 'W')
-			{
-				selectedAction = RIGHT;
-			}
-		}
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-		{
-			if (currentControls[0] == 'D')
-			{
-				selectedAction = UP;
-			}
-			if (currentControls[1] == 'D')
-			{
-				selectedAction = LEFT;
-			}
-			if (currentControls[2] == 'D')
-			{
-				selectedAction = DOWN;
-			}
-			if (currentControls[3] == 'D')
-			{
-				selectedAction = RIGHT;
+
+			for (int i = 0; i < 4; i++) {
+				if (currentControls[i] == inputChar) {
+
+					switch (i) {
+					case(0):
+						selectedAction = UP;
+						break;
+					case(1):
+						selectedAction = LEFT;
+						break;
+					case(2):
+						selectedAction = DOWN;
+						break;
+					case(3):
+						selectedAction = RIGHT;
+						break;
+					default:
+						break;
+					}
+
+				}
 			}
 		}
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-		{
-			if (currentControls[0] == 'S')
-			{
-				selectedAction = UP;
-			}
-			if (currentControls[1] == 'S')
-			{
-				selectedAction = LEFT;
-			}
-			if (currentControls[2] == 'S')
-			{
-				selectedAction = DOWN;
-			}
-			if (currentControls[3] == 'S')
-			{
-				selectedAction = RIGHT;
-			}
-		}
+
 		if (selectedAction == LEFT) player.setFlipped(true);
 	}
 	else
 	{
 		// Timing incorrect, any attempted input is a fail.
-		if(!stepFailed)	misses++;	// don't increment misses more than once/step
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-		{
-			stepFailed = true;
-		}
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-		{
-			stepFailed = true;
-		}
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-		{
-			stepFailed = true;
-		}
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+		if (!stepFailed)	misses++;	// don't increment misses more than once/step
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A) || sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::D) || sf::Keyboard::isKeyPressed(sf::Keyboard::S))
 		{
 			stepFailed = true;
 		}
@@ -251,11 +203,13 @@ void WizardLevel::update(float dt)
 	}
 
 	player.update(dt);
+	grid.update_animation(dt);
 	lecturer->update(dt);
 
 	// check if controls need to be changed
 	if (timeTaken > TIME_BETWEEN_CHANGES + lastControlChange)
 	{
+
 		randomiseControls();
 		lastControlChange = timeTaken;
 	}
@@ -333,7 +287,7 @@ void WizardLevel::update(float dt)
 		// do a move.
 		beatsPlayed++;
 		stepFailed = false;
-		grid.update(0);
+		grid.update(0, dt);
 		timeInStep = 0.f;
 		soundPlayed = false;
 		switch (selectedAction)
@@ -445,8 +399,8 @@ void WizardLevel::reset()
 	boardTop = windowHeight * 0.05;	// the board is as wide as can be with the given constants.
 	boardLeft = boardTop;	// uniform top and side padding.
 	boardRight = windowWidth - boardLeft;
-	int numRows = 10;
-	int numCols = 20;
+	int numRows = 15;
+	int numCols = 15;
 	cellDim = (boardRight - boardLeft) / numCols;
 	boardBottom = numRows * cellDim + boardTop;
 	// ensure grid does not take up too much of the sapce

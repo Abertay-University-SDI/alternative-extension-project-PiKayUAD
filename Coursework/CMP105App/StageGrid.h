@@ -4,6 +4,7 @@
 #include "Random"
 #include "TextureManager.h"
 #include "Framework/GameObject.h"
+#include "Framework/Animation.h"
 
 class StageGrid
 {
@@ -24,9 +25,11 @@ public:
 		CHECKPOINT
 	};
 
-	void update(int frames);
+	void update(int frames, float dt);
 	void render(sf::RenderWindow* wnd, bool cp_on);
+	void update_animation(float dt);
 	bool playerHit(std::pair<int, int> pos);
+	void rotate_tiles();
 
 private:
 	TextureManager* textMan;
@@ -34,6 +37,11 @@ private:
 	std::vector<std::vector<GameObject>> board;
 	float cellSize;
 	sf::Vector2f position;
+
+	float time_elapsed;
+
+	sf::Texture safe_tile;
+	Animation tile_turn;
 };
 
 

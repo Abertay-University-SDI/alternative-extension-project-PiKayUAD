@@ -25,7 +25,7 @@ public:
 	Animation damaged;
 	Animation kick;
 	Animation* currentAnimation;
-	
+
 	// jump component
 	float jumpHeight;
 	float jumpTimeElapsed = 0.f;

@@ -282,7 +282,7 @@ void Level::update(float dt)
 	{
 		// do a move.
 		beatsPlayed++;
-		grid.update(0);
+		grid.update(0, dt);
 		timeInStep = 0.f;
 		soundPlayed = false;
 		switch (selectedAction)
