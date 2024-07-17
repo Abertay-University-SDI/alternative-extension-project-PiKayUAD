@@ -17,6 +17,8 @@ RunnerLevel::RunnerLevel(sf::RenderWindow* hwnd, Input* in, GameState* gs, Audio
 	textMan = tm;
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
 
+	audio->addSound("sfx/bump.wav", "bump"); //bump 7 on pixabay
+
 	// setup BGs as ten images next to each other. base dimensions 1024x1024
 	float bgScalar = hwnd->getSize().y / 1024.0f;
 	for (int i = 0; i < 21; ++i)
@@ -39,27 +41,34 @@ RunnerLevel::RunnerLevel(sf::RenderWindow* hwnd, Input* in, GameState* gs, Audio
 		// go forward a random distance:
 		placementIndex += getRandomInt(650,800);
 		// harder in the back half.
-		if (placementIndex > distance / 2) placementIndex -= getRandomInt(100, 250);	
+		if (placementIndex > distance / 2) placementIndex -= getRandomInt(100, 250);
 		if (placementIndex > distance) break;
 		objects += 1;
 		GameObject newObj;
 		newObj.setPosition(placementIndex, window->getSize().y * 0.6);
 		newObj.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.1));
 		// randomly put a jumpable, kickable or two-jumpables next to each other
-		int seed = getRandomInt(0, 2);
+		int seed = getRandomInt(0, 3);
 		switch (seed)
 		{
 		case 0:
 			// kickable
 			newObj.setTexture(&textMan->getTexture("kickable"));
-			newObj.setPosition(placementIndex, window->getSize().y * 0.5);
-			newObj.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.2));
+			newObj.setPosition(placementIndex, window->getSize().y * 0.4);
+			newObj.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.35));
 			kickables.push_back(newObj);
 			break;
 		case 1:
 			// jumpable
 			newObj.setTexture(&textMan->getTexture("jumpable"));
 			jumpables.push_back(newObj);
+			break;
+		case 3:
+			// stompable
+			newObj.setTexture(&textMan->getTexture("kickable"));
+			newObj.setPosition(placementIndex, window->getSize().y * 0.6);
+			newObj.setSize(sf::Vector2f(window->getSize().y * 0.5, window->getSize().y * 0.1));
+			stompables.push_back(newObj);
 			break;
 		case 2:
 			newObj.setTexture(&textMan->getTexture("jumpable"));
@@ -68,11 +77,13 @@ RunnerLevel::RunnerLevel(sf::RenderWindow* hwnd, Input* in, GameState* gs, Audio
 			secondObj.setPosition(secondObj.getPosition().x + secondObj.getSize().x, secondObj.getPosition().y);
 			jumpables.push_back(secondObj);
 			break;
+		
 		}
 	}
 	
 	// setup Player
-	p.setPosition(30, window->getSize().y * 0.6);
+	p.setPosition(300, window->getSize().y * 0.6);
+	p.updateGroundHeight();
 	speed = 0.f;
 
 	progressP.setSize(sf::Vector2f(window->getSize().y * 0.04, window->getSize().y * 0.04));
@@ -97,6 +108,10 @@ RunnerLevel::~RunnerLevel()
 {
 }
 
+bool Player::isStomping() {
+	return (currentAnimation == &stomp);
+}
+
 void RunnerLevel::handleInput(float dt)
 {
 	
@@ -104,7 +119,11 @@ void RunnerLevel::handleInput(float dt)
 	{
 		p.setJumping(window->getSize().y*0.25, 0.85);
 	}
-	if (input->isKeyDown(sf::Keyboard::Enter) && !p.isKicking())
+	if (input->isKeyDown(sf::Keyboard::Enter) && !p.canJump() && !p.isStomping())
+	{
+		p.setStomping();
+	}
+	else if (input->isKeyDown(sf::Keyboard::Enter) && !p.isKicking() && !p.isStomping())
 	{
 		p.setKicking(0.5);
 	}
@@ -140,7 +159,12 @@ void RunnerLevel::update(float dt)
 	}
 
 	time += dt;
+
+	//plays thump the frame the player lands from a stomp
+	bool stomp = p.isStomping();
 	p.update(dt);
+	if (stomp != p.isStomping() && !p.isDamaged()) { audio->playSoundbyName("bump"); }
+
 	progressP.update(dt);
 	float progress = (travelled / distance) * window->getSize().x * 0.5;
 	progressP.setPosition(0.25 * window->getSize().x + progress, 0.03 * window->getSize().y);
@@ -159,6 +183,10 @@ void RunnerLevel::update(float dt)
 	{
 		k.move(-dt * speed, 0);
 	}
+	for (GameObject& s : stompables)
+	{
+		s.move(-dt * speed, 0);
+	}
 	for (GameObject& e : explosions)
 	{
 		e.move(-dt * speed, 0);
@@ -168,7 +196,7 @@ void RunnerLevel::update(float dt)
 	// speed increases to max. Changes animation speed.
 	if (speed < MAX_SPEED)
 		speed += dt * ACCELERATION;
-	if (!p.isKicking())
+	if (!p.isKicking() && !p.isStomping())
 		p.currentAnimation->setFrameSpeed(25 / speed);
 
 	// explosions
@@ -248,6 +276,34 @@ void RunnerLevel::update(float dt)
 		}
 	}
 
+	for (int i = 0; i < stompables.size(); ++i)
+	{
+		GameObject k = stompables[i];
+		if (colliding(k))
+		{
+			if (p.isStomping())
+			{
+				// explode the box
+				stompables.erase(stompables.begin() + i);
+				audio->playSoundbyName("success");
+				GameObject explosion;
+				explosion.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.1));
+				explosion.setPosition(p.getPosition());
+				explosion.setTexture(&textMan->getTexture("explosion1"));
+				explosions.push_back(explosion);
+				explosionTimer.push_back(0.f);
+			}
+			else
+			{
+				hits++;
+				p.setDamaged(1);
+				speed = 0.f;
+				// delete object so you don't collide with it again.
+				stompables.erase(stompables.begin() + i);
+				audio->playSoundbyName("death");
+			}
+		}
+	}
 }
 
 void RunnerLevel::render()
@@ -257,6 +313,7 @@ void RunnerLevel::render()
 	window->draw(moon);
 	for (GameObject j : jumpables) window->draw(j);
 	for (GameObject k : kickables) window->draw(k);
+	for (GameObject s : stompables) window->draw(s);
 	window->draw(finishLine);
 	window->draw(p);
 	window->draw(progressLine);
@@ -276,12 +333,13 @@ void RunnerLevel::reset()
 	travelled = 0.f;
 
 	// setup Player
-	p.setPosition(30, window->getSize().y * 0.6);
+	p.setPosition(300, window->getSize().y * 0.6);
 	speed = 0.f;
 
 	BGs.clear();
 	kickables.clear();
 	jumpables.clear();
+	stompables.clear();
 
 	// setup BGs as ten images next to each other. base dimensions 1024x1024
 	float bgScalar = window->getSize().y / 1024.0f;
@@ -307,20 +365,27 @@ void RunnerLevel::reset()
 		newObj.setPosition(placementIndex, window->getSize().y * 0.6);
 		newObj.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.1));
 		// randomly put a jumpable, kickable or two-jumpables next to each other
-		int seed = getRandomInt(0, 2);
+		int seed = getRandomInt(0, 3);
 		switch (seed)
 		{
 		case 0:
 			// kickable
 			newObj.setTexture(&textMan->getTexture("kickable"));
-			newObj.setPosition(placementIndex, window->getSize().y * 0.5);
-			newObj.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.2));
+			newObj.setPosition(placementIndex, window->getSize().y * 0.4);
+			newObj.setSize(sf::Vector2f(window->getSize().y * 0.1, window->getSize().y * 0.35));
 			kickables.push_back(newObj);
 			break;
 		case 1:
 			// jumpable
 			newObj.setTexture(&textMan->getTexture("jumpable"));
 			jumpables.push_back(newObj);
+			break;
+		case 3:
+			// stompable
+			newObj.setTexture(&textMan->getTexture("kickable"));
+			newObj.setPosition(placementIndex, window->getSize().y * 0.6);
+			newObj.setSize(sf::Vector2f(window->getSize().y * 0.5, window->getSize().y * 0.1));
+			stompables.push_back(newObj);
 			break;
 		case 2:
 			newObj.setTexture(&textMan->getTexture("jumpable"));
@@ -329,6 +394,7 @@ void RunnerLevel::reset()
 			secondObj.setPosition(secondObj.getPosition().x + secondObj.getSize().x, secondObj.getPosition().y);
 			jumpables.push_back(secondObj);
 			break;
+
 		}
 	}
 	finishLine.setPosition(distance, window->getSize().y * 0.5);

@@ -30,6 +30,10 @@ public:
 	void update_animation(float dt);
 	bool playerHit(std::pair<int, int> pos);
 	void rotate_tiles();
+	void rotate();
+	sf::Vector2f getTilePosition(int x, int y);
+	int get_turns();
+
 
 private:
 	TextureManager* textMan;
@@ -42,6 +46,7 @@ private:
 
 	sf::Texture safe_tile;
 	Animation tile_turn;
+	int turns;
 };
 
 

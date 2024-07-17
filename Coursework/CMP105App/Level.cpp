@@ -356,6 +356,7 @@ void Level::render()
 	window->draw(levelBG);
 	grid.render(window, checkPointEnabled);
 	window->draw(controls[0]);
+	player.setPosition(grid.getTilePosition(playerPosition.first, playerPosition.second) + sf::Vector2(10.f, 0.f));
 	window->draw(player);
 	window->draw(progressInStepBG);
 	window->draw(targetZone);

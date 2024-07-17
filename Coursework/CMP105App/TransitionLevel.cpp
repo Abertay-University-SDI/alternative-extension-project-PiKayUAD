@@ -57,7 +57,7 @@ void TransitionLevel::update(float dt)
 		explain.setString("Move with WASD.\nMove in time with the claps.\nAvoid tanks and pits.\nThey are metaphors for adversary.\nThere is a checkpoint halfway round.\nIt will be yellow when enabled.\nYou cannot pause.\nYou will have assistance.\nYou will be motivated.\nIt will not be helpful.\nHit Enter.");
 		break;
 	case State::PRE_TWO:
-		explain.setString("Kick (enter) wooden boxes.\nJump over (space) metal ones.\nYou got this.\nGood Luck.\nHit Enter");
+		explain.setString("Kick or Stomp (enter) wooden boxes.\nJump over (space) metal ones.\nYou got this.\nGood Luck.\nHit Enter");
 		break;
 	case State::PRE_THREE:
 		explain.setString("Move with WASD.\nMove in time with the claps.\nAvoid Tanks and Pits.\nThere is a checkpoint.\nYou will be assisted.\nKind of.\nHit Enter.\nGood Luck.");

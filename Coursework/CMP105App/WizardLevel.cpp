@@ -8,6 +8,8 @@ WizardLevel::WizardLevel(sf::RenderWindow* hwnd, Input* in, GameState* gs, Audio
 	audio = aud;
 	textMan = tm;
 
+	audio->addSound("sfx/whoosh 2.wav", "whoosh"); //Fast Whoosh by StudioKolomna on Pixabay
+
 	// initialise game objects
 	selectedAction = NONE;
 	lastAction = NONE;
@@ -172,7 +174,25 @@ void WizardLevel::handleInput(float dt)
 			}
 		}
 
-		if (selectedAction == LEFT) player.setFlipped(true);
+
+		//assigns each direction a number and flips the sprite so that the player faces forwards regardless of rotation
+		int direction = -1;
+		switch (selectedAction) {
+		case(DOWN):
+			direction = 0;
+			break;
+		case(RIGHT):
+			direction = 1;
+			break;
+		case (UP):
+			direction = 2;
+			break;
+		case (LEFT):
+			direction = 3;
+			break;
+		}
+		if (direction == grid.get_turns()) { player.setFlipped(true); }
+		else if ((direction + 2)%4 == grid.get_turns()) { player.setFlipped(false); }
 	}
 	else
 	{
@@ -228,27 +248,53 @@ void WizardLevel::update(float dt)
 		soundPlayed = true;
 	}
 
+
+	int direction = grid.get_turns();
+	switch (selectedAction) {
+	case (LEFT):
+		direction += 0;
+		break;
+	case(UP):
+		direction += 1;
+		break;
+	case(RIGHT):
+		direction += 2;
+		break;
+	case (DOWN):
+		direction += 3;
+		break;
+	case(NONE):
+		direction = -1;
+		break;
+	case(FAIL):
+		direction = -2;
+		break;
+	}
+	direction = direction % 4;
+
 	// update UI
-	switch (selectedAction)
+	switch (direction)
 	{
-	case UP:
+	case (0):
 		controls[0].setString("up");
 		break;
-	case RIGHT:
+	case (1):
 		controls[0].setString("right");
 		break;
-	case DOWN:
+	case (2):
 		controls[0].setString("down");
 		break;
-	case LEFT:
+	case (3):
 		controls[0].setString("left");
 		break;
-	case FAIL:
+	case (-2):
 		// don't update.
 		break;
-	case NONE:
+	case (-1):
 		controls[0].setString("");
 		break;
+
+
 	}
 
 	// update progress component
@@ -270,6 +316,9 @@ void WizardLevel::update(float dt)
 	// arrange arrow icons to show current controls
 	std::vector<std::string> indicatorNames = { "upIcon", "leftIcon", "downIcon", "rightIcon" };
 	std::vector<char> inOrder = { 'W','A','S','D' };
+
+
+	int offset = grid.get_turns();
 	for (int i = 0; i < 4; ++i)
 	{
 		// where is the next char in order in the list of current controls?
@@ -278,7 +327,7 @@ void WizardLevel::update(float dt)
 		{
 			indexOfButton++;
 		}
-		indicators[i].setTexture(&textMan->getTexture(indicatorNames[indexOfButton]));
+		indicators[i].setTexture(&textMan->getTexture(indicatorNames[(indexOfButton + 3 - offset) % 4])); //offset swaps the sprites so that they match the rotation
 	}
 
 	// movement
@@ -307,7 +356,6 @@ void WizardLevel::update(float dt)
 				break;
 			}
 			playerPosition.first++;
-			player.setFlipped(false);
 			break;
 		case DOWN:
 			if (playerPosition.second == boardDimensions.y - 1)
@@ -344,6 +392,7 @@ void WizardLevel::render()
 	window->draw(controlBG);
 	grid.render(window, checkPointEnabled);
 	window->draw(controls[0]);
+	player.setPosition(grid.getTilePosition(playerPosition.first, playerPosition.second) + sf::Vector2(10.f, 0.f));
 	window->draw(player);
 	window->draw(progressInStepBG);
 	window->draw(targetZone);
@@ -363,11 +412,14 @@ void WizardLevel::render()
 // change order of WASD controls
 void WizardLevel::randomiseControls()
 {
-	std::random_device rd;
-	std::mt19937 gen(rd());
+	//std::random_device rd;
+	//std::mt19937 gen(rd());
+
+	audio->playSoundbyName("whoosh");
+	grid.rotate();
 
 	// Shuffle the vector using std::shuffle
-	std::shuffle(currentControls.begin(), currentControls.end(), gen);
+	//std::shuffle(currentControls.begin(), currentControls.end(), gen);
 
 }
 

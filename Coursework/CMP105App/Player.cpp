@@ -19,10 +19,16 @@ Player::Player()
 	{
 		kick.addFrame(sf::IntRect(i * 24.f + 240.f, 0.f, 24.f, 24.f));
 	}
+	for (int i = 0; i < 3; i++) {
+		stomp.addFrame(sf::IntRect(i * 24.f + 576.f, 0.f, 24.f, 24.f));
+	}
+	squish.addFrame(sf::IntRect(648.f, 0.f, 24.f, 24.f));
 	damaged.addFrame(sf::IntRect(0, 0, 24, 24));
 	damaged.addFrame(sf::IntRect(15 * 24, 0, 24, 24));
 	damaged.setFrameSpeed(1.f / 4.f);
 	currentAnimation = &walk;
+	stomp.setLooping(false);
+	stomp.setFrameSpeed(1.f / 20.f);
 	walk.setFrameSpeed(1.f / 10.f);
 	//kick.setLooping(false);
 
@@ -31,6 +37,10 @@ Player::Player()
 
 Player::~Player()
 {
+}
+
+void Player::updateGroundHeight() {
+	groundHeight = getPosition().y;
 }
 
 void Player::setJumping(float jumpH, float jumpLength)
@@ -56,7 +66,7 @@ void Player::setKicking(float t)
 
 bool Player::canJump() const
 {
-	return jumpTime == 0;
+	return jumpTime == 0 && currentAnimation != &stomp;
 }
 
 void Player::setFlipped(bool f)
@@ -67,6 +77,14 @@ void Player::setFlipped(bool f)
 void Player::handleInput(float dt)
 {
 
+}
+
+void Player::setStomping() {
+	currentAnimation = &stomp;
+	jumpHeight = 0;
+	jumpTimeElapsed = 0.f;
+	jumpTime = 0.f;
+	stomp.reset();
 }
 
 bool Player::isDamaged()
@@ -84,10 +102,24 @@ void Player::update(float dt)
 {
 	if (currentAnimation == &damaged)
 		damagedTimer += dt;
+
 	if (damagedTimer > damageLength)
 	{
 		currentAnimation = &walk;
 		damagedTimer = 0.f;
+	}
+
+	if (currentAnimation == &stomp) {
+		jumpTime = 0.f;
+		if (getPosition().y < groundHeight) {
+			move(0, 3.f);
+		}
+		else
+		{
+			currentAnimation = &squish;
+			kickTime = 0.1f;
+			kickTimeElapsed = 0;
+		}
 	}
 
 	// check for jump
@@ -113,6 +145,10 @@ void Player::update(float dt)
 		jumpHeight = 0;
 		jumpTimeElapsed = 0.f;
 		jumpTime = 0.f;
+
+		if ((currentAnimation == &walk || currentAnimation == &kick) && getPosition().y < groundHeight) {
+			move(0, 1.f);
+		}
 	}
 
 	// check for kick status.

@@ -72,6 +72,7 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 			grid[1 + i * 3][dimensions.y / 2 + 1] = cellState::HAZARD_DOWN;
 
 		}
+		turns = 0;
 	}
 	if (stage == 2)
 	{
@@ -79,12 +80,24 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 		// draw top wall
 		for (int i = 0; i < 7; ++i) maze.push_back({ i, 1 });
 		// draw mid divider
+		
+		/*
 		for (int i = 0; i < 4; ++i)
 		{
 			maze.push_back({ 9,i });
 			maze.push_back({ 9, 9 - i });
 			maze.push_back({ 8 - i, 6 + i });
 		}
+		*/
+
+		/*
+		for (int i = 0; i < 15; ++i)
+		{
+			maze.push_back({ 1,i });
+			maze.push_back({ 13, i });
+		}
+		*/
+
 		// bottom of second corridor
 		for (int i = 2; i < 9; ++i) maze.push_back({ i, 3 });
 
@@ -106,14 +119,18 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 		grid[13][4] = HAZARD_RIGHT;
 		//grid[14][6] = HAZARD_RIGHT;	// and here, removed for balancing.
 		grid[1][8] = HAZARD_RIGHT;
-
+		turns = -1;
 	}
-
-	for (int i = 0; i < 4; ++i)
+	
+	tile_turn.setLooping(false);
+	tile_turn.setFrameSpeed(1.f / 12.f);
+	for (int i = 0; i < 5; ++i)
 	{
 		tile_turn.addFrame(sf::IntRect(i * 135.f, 0.f, 135.f, 135.f));
+		tile_turn.animate(1.f); //makes the animation start on the last frame due to how this prevents an offset
 	}
-	tile_turn.setFrameSpeed(1.f / 12.f);
+	tile_turn.setLooping(false);
+	
 }
 
 
@@ -219,23 +236,35 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 		for (int y = 0; y < grid[x].size(); ++y)
 		{
 			board[x][y].setTexture(&textMan->getTexture("safe_tile"));
-			board[x][y].setSize(sf::Vector2f(cellSize, cellSize) * 1.5f);
-			board[x][y].setPosition(position.x + (x * cellSize), position.y + (y * cellSize));
-			rotate_tiles();
+			board[x][y].setTextureRect(tile_turn.getCurrentFrame());
+			board[x][y].setSize(sf::Vector2f(cellSize * 1.5f, cellSize * 1.5f)); // 
+			board[x][y].setPosition(position.x + (x * cellSize), position.y + (y * cellSize));// );
+			
+			
+		}
+	}
+	rotate_tiles();
+	for (int x = 0; x < grid.size(); ++x)
+	{
+
+		for (int y = 0; y < grid[x].size(); ++y)
+		{
 			wnd->draw(board[x][y]);
 		}
 	}
-
+	
 	for (int x = 0; x < grid.size(); ++x)
 	{
+		//std:: cout << "overlay pos" << board[x][14].getPosition().y << std::endl;
 		for (int y = 0; y < grid[x].size(); ++y)
 		{
 			if (grid[x][y] == cellState::SAFE) continue;
 
 			GameObject cellOverlay;
-			cellOverlay.setSize(sf::Vector2f(cellSize, cellSize));
-			cellOverlay.setPosition(board[x][y].getPosition());
+			cellOverlay.setSize(sf::Vector2f(cellSize * 0.7f, cellSize * 0.7f)); // * 0.7f)
+			cellOverlay.setPosition(board[x][y].getPosition() + sf::Vector2f(12.5f, 12.5f));
 
+			int tank = 0;
 			switch (grid[x][y])
 			{
 			case cellState::PIT:
@@ -252,17 +281,36 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 				else cellOverlay.setTexture(&textMan->getTexture("cp_off"));
 				break;
 			case cellState::HAZARD_DOWN:
-				cellOverlay.setTexture(&textMan->getTexture("tankDown"));
-				break;
-			case cellState::HAZARD_UP:
-				cellOverlay.setTexture(&textMan->getTexture("tankUp"));
+				tank = 1;
 				break;
 			case cellState::HAZARD_LEFT:
-				cellOverlay.setTexture(&textMan->getTexture("tankLeft"));
+				tank = 2;
+				break;
+			case cellState::HAZARD_UP:
+				tank = 3;
 				break;
 			case cellState::HAZARD_RIGHT:
-				cellOverlay.setTexture(&textMan->getTexture("tankRight"));
+				tank = 4;
 				break;
+			}
+			if (tank > 0) {
+				//tank--;
+				tank = (tank + turns) % 4;
+				switch (tank)
+				{
+				case(0):
+					cellOverlay.setTexture(&textMan->getTexture("tankDown"));
+					break;
+				case(1):
+					cellOverlay.setTexture(&textMan->getTexture("tankLeft"));
+					break;
+				case(2):
+					cellOverlay.setTexture(&textMan->getTexture("tankUp"));
+					break;
+				case(3):
+					cellOverlay.setTexture(&textMan->getTexture("tankRight"));
+					break;
+				}
 			}
 
 			wnd->draw(cellOverlay);
@@ -288,7 +336,7 @@ void StageGrid::rotate_tiles() {
 
 	int frame_number = tile_turn.getCurrentFrame().left / 135;
 	float angle = 0.f;
-
+	
 	switch (frame_number) {
 	case(0):
 		angle = 0.f;
@@ -302,18 +350,38 @@ void StageGrid::rotate_tiles() {
 	case(3):
 		angle = 1.39626f; //80 degrees
 		break;
+	case(4):
+		angle = 1.5708; //90 degreees
+		break;
 	}
+	angle += 1.5708 * turns;
 
-	for (int x = 0; x < grid.size(); ++x)
+	for (int i = 0; i < grid.size(); ++i)
 	{
-		for (int y = 0; y < grid[x].size(); ++y)
+		
+		for (int j = 0; j < grid[i].size(); ++j)
 		{
-			new_position = board[x][y].getPosition() - centre_position;
-			new_position = sf::Vector2f(new_position.x * cos(angle) - new_position.y * sin(angle), (new_position.x * sin(angle) + new_position.y * cos(angle)) * 0.72f);
-
+			new_position = board[i][j].getPosition() - centre_position;
+			new_position = sf::Vector2f(new_position.x * cos(angle) - new_position.y * sin(angle), (new_position.x * sin(angle) + new_position.y * cos(angle))); //rotation matrix
+			new_position.y *= 0.72f;
 			new_position += centre_position;
-			board[x][y].setPosition(new_position);
+
+			
+			
+			board[i][j].setPosition(new_position);
 		}
 	}
 }
 
+sf::Vector2f StageGrid::getTilePosition(int x, int y) {
+	return board[x][y].getPosition();
+}
+
+void StageGrid::rotate() {
+	turns++;
+	turns = turns % 4;
+	tile_turn.reset();
+	tile_turn.setPlaying(true);
+}
+
+int StageGrid::get_turns() { return turns; }

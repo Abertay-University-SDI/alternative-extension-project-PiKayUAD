@@ -23,6 +23,7 @@ private:
 	std::vector<GameObject> BGs;
 	std::vector<GameObject> jumpables;
 	std::vector<GameObject> kickables;
+	std::vector<GameObject> stompables;
 	std::vector<GameObject> explosions;
 	std::vector<float> explosionTimer;
 
