@@ -413,14 +413,14 @@ void WizardLevel::render()
 // change order of WASD controls
 void WizardLevel::randomiseControls()
 {
-	//std::random_device rd;
-	//std::mt19937 gen(rd());
+	std::random_device rd;
+	std::mt19937 gen(rd());
 
 	audio->playSoundbyName("whoosh");
 	grid.rotate();
 
 	// Shuffle the vector using std::shuffle
-	//std::shuffle(currentControls.begin(), currentControls.end(), gen);
+	std::shuffle(currentControls.begin(), currentControls.end(), gen);
 
 }
 
