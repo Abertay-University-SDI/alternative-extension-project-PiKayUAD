@@ -28,6 +28,7 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 	cellSize = cellSizeIn;
 	position = positionIn;
 
+	player_position = std::pair<int, int>{ 0,0 };
 
 	// initialise grid to all safe and size the gameObjects for drawing.
 	for (int i = 0; i < dimensions.x; ++i)
@@ -78,7 +79,17 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 	{
 		std::vector<std::pair<int, int>> maze;
 		// draw top wall
-		for (int i = 0; i < 7; ++i) maze.push_back({ i, 1 });
+		for (int i = 0; i < 5; ++i) maze.push_back({ i, 1 });
+		for (int i = 0; i < 6; ++i) maze.push_back({ 14 - i, 5 });
+		for (int i = 0; i < 6; ++i) maze.push_back({ 14 - i, 10 });
+		for (int i = 0; i < 3; ++i) maze.push_back({ 9, 10+i });
+		
+
+		for (int i = 0; i < 7; i++) {
+			maze.push_back({7, 4+i});
+			maze.push_back({ 4 + i,7 });
+		}
+
 		// draw mid divider
 		
 		/*
@@ -99,12 +110,13 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 		*/
 
 		// bottom of second corridor
-		for (int i = 2; i < 9; ++i) maze.push_back({ i, 3 });
+		for (int i = 2; i < 7; ++i) maze.push_back({ i, 4 });
 
 		for (std::pair<int, int> p : maze)
 		{
 			grid[p.first][p.second] = cellState::PIT;
 		}
+
 
 		// tanks for the first 'arena'
 		grid[2][8] = HAZARD_UP;
@@ -113,13 +125,15 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 
 		// tanks for the second 'arena'
 		grid[12][8] = HAZARD_UP;
-		grid[13][5] = HAZARD_UP;
+		//grid[13][5] = HAZARD_UP;
 		//grid[18][2] = HAZARD_UP;		// removed to make it easier also.
 		grid[12][2] = HAZARD_RIGHT;
-		grid[13][4] = HAZARD_RIGHT;
+		grid[12][3] = HAZARD_LEFT;
+		//grid[13][4] = HAZARD_RIGHT;
 		//grid[14][6] = HAZARD_RIGHT;	// and here, removed for balancing.
 		grid[1][8] = HAZARD_RIGHT;
-		turns = -1;
+		turns = 3;
+		grid[13][13] = METEOR;
 	}
 	
 	tile_turn.setLooping(false);
@@ -127,12 +141,25 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 	for (int i = 0; i < 5; ++i)
 	{
 		tile_turn.addFrame(sf::IntRect(i * 135.f, 0.f, 135.f, 135.f));
-		tile_turn.animate(1.f); //makes the animation start on the last frame due to how this prevents an offset
+		tile_turn.animate(1.f/3.f); //makes the animation start on the last frame due to how this prevents an offset
 	}
 	tile_turn.setLooping(false);
 	
 }
+void StageGrid::reset_meteor() {
+	for (int x = 0; x < grid.size(); ++x)
+	{
+		for (int y = 0; y < grid[x].size(); y++)
+		{
+			if (grid[x][y] == METEOR) grid[x][y] = SAFE;
+		}
+	}
+	grid[13][13] = METEOR;
+}
 
+void StageGrid::set_player_pos(std::pair<int, int> pos) {
+	player_position = pos;
+}
 
 // returns true if the player is colliding with a pit or hazard.
 bool StageGrid::playerHit(std::pair<int, int> pos)
@@ -141,7 +168,11 @@ bool StageGrid::playerHit(std::pair<int, int> pos)
 		grid[pos.first][pos.second] == cellState::HAZARD_UP ||
 		grid[pos.first][pos.second] == cellState::HAZARD_RIGHT ||
 		grid[pos.first][pos.second] == cellState::HAZARD_DOWN ||
-		grid[pos.first][pos.second] == cellState::HAZARD_LEFT)
+		grid[pos.first][pos.second] == cellState::HAZARD_LEFT ||
+		grid[pos.first][pos.second] == cellState::METEOR ||
+		grid[pos.first][pos.second] == cellState::METEOR_TRAIL1 ||
+		grid[pos.first][pos.second] == cellState::METEOR_TRAIL2 || 
+		grid[pos.first][pos.second] == cellState::METEOR_TRAIL3)
 		return true;
 	return false;
 
@@ -217,6 +248,20 @@ void StageGrid::update(int frames, float dt)
 					updatedGrid[x][y] = HAZARD_LEFT;
 				}
 				break;
+			case METEOR_TRAIL1:
+				updatedGrid[x][y] = METEOR_TRAIL2;
+				break;
+			case METEOR_TRAIL2:
+				updatedGrid[x][y] = METEOR_TRAIL3;
+				break;
+			case METEOR_TRAIL3:
+				updatedGrid[x][y] = SAFE;
+				break;
+			case METEOR:
+				std::pair<int, int> new_pos = meteor_pathfind(std::pair<int, int>{x, y});
+				updatedGrid[x][y] = METEOR_TRAIL1;
+				updatedGrid[new_pos.first][new_pos.second] = METEOR;
+				break;
 			}
 		}
 	}
@@ -224,6 +269,105 @@ void StageGrid::update(int frames, float dt)
 	// update the grid with the newly calculated positions
 	grid = updatedGrid;
 }
+
+std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_position) {
+	
+	enum cellSearchState
+	{
+		BLOCKED,
+		UNCHECKED,
+		UP,
+		LEFT,
+		DOWN,
+		RIGHT,
+	};
+
+	std::vector<std::vector<cellSearchState>>new_grid;
+	
+	
+	for (int x = 0; x < grid.size(); x++) {
+		std::vector<cellSearchState> row;
+		for (int y = 0; y < grid[0].size(); y++) {
+			if (grid[x][y] == SAFE) { row.push_back(UNCHECKED); }
+			else { row.push_back(BLOCKED); }
+		}
+		new_grid.push_back(row);
+	}
+	
+	std::vector<std::pair<int, int>> unfinished_paths;
+	//unfinished_paths.push_back(std::make_pair(1, 1));
+	unfinished_paths.push_back(meteor_position);
+
+	bool path_found = false;
+	
+	while (unfinished_paths.size() > 0 && !path_found) {
+		if (unfinished_paths[0].first + 1 < new_grid.size()) {
+			//std::cout << unfinished_paths[0].first + 1 << ", " << unfinished_paths[0].second << "\n";
+			if (new_grid[unfinished_paths[0].first + 1][unfinished_paths[0].second] == UNCHECKED) {
+				new_grid[unfinished_paths[0].first + 1][unfinished_paths[0].second] = RIGHT;
+				unfinished_paths.push_back(std::make_pair(unfinished_paths[0].first + 1, unfinished_paths[0].second));
+			}
+		}
+		
+		if (unfinished_paths[0].first - 1 >= 0) {
+			if (new_grid[unfinished_paths[0].first - 1][unfinished_paths[0].second] == UNCHECKED) {
+				new_grid[unfinished_paths[0].first - 1][unfinished_paths[0].second] = LEFT;
+				unfinished_paths.push_back(std::make_pair(unfinished_paths[0].first - 1, unfinished_paths[0].second));
+			}
+		}
+		if (unfinished_paths[0].second + 1 < new_grid[0].size()) {
+			if (new_grid[unfinished_paths[0].first][unfinished_paths[0].second + 1] == UNCHECKED) {
+				new_grid[unfinished_paths[0].first][unfinished_paths[0].second +1] = UP;
+				unfinished_paths.push_back(std::make_pair(unfinished_paths[0].first , unfinished_paths[0].second + 1));
+			}
+		}
+		if (unfinished_paths[0].second - 1 >= 0) {
+			if (new_grid[unfinished_paths[0].first][unfinished_paths[0].second - 1] == UNCHECKED) {
+				new_grid[unfinished_paths[0].first][unfinished_paths[0].second - 1] = DOWN;
+				unfinished_paths.push_back(std::make_pair(unfinished_paths[0].first , unfinished_paths[0].second - 1));
+			}
+		}
+		
+		if (unfinished_paths[0] == player_position) {
+			path_found = true;
+		}
+		else {
+			unfinished_paths.erase(unfinished_paths.begin());
+		}
+	}
+	
+
+	if (path_found) {
+		std::pair<int, int> path_follower = player_position;
+		std::pair<int, int> path_follower2 = path_follower;
+		while(path_follower != meteor_position) {
+			switch (new_grid[path_follower.first][path_follower.second])
+			{
+			case(RIGHT):
+				path_follower.first--;
+				break;
+			case(LEFT):
+				path_follower.first++;
+				break;
+			case(UP):
+				path_follower.second--;
+				break;
+			case(DOWN):
+				path_follower.second++;
+				break;
+			}
+
+			if (path_follower != meteor_position) {
+				path_follower2 = path_follower;
+			}
+		}
+		meteor_position = path_follower2;
+	}
+	return meteor_position;
+}
+
+
+
 
 
 // draw the current grid state. Takes window to draw to
@@ -280,6 +424,23 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 				if (cp_on) cellOverlay.setTexture(&textMan->getTexture("cp_on"));
 				else cellOverlay.setTexture(&textMan->getTexture("cp_off"));
 				break;
+			case METEOR:
+				cellOverlay.setTexture(&textMan->getTexture("meteor"));
+				break;
+			case METEOR_TRAIL1:
+				cellOverlay.setTexture(&textMan->getTexture("flame"));
+				break;
+			case METEOR_TRAIL2:
+				cellOverlay.setTexture(&textMan->getTexture("flame"));
+				cellOverlay.setSize(cellOverlay.getSize() * 0.8f);
+				cellOverlay.setPosition(cellOverlay.getPosition() + sf::Vector2f(5.f, 5.f));
+				break;
+			case METEOR_TRAIL3:
+				cellOverlay.setTexture(&textMan->getTexture("flame"));
+				cellOverlay.setSize(cellOverlay.getSize() * 0.6f);
+				cellOverlay.setPosition(cellOverlay.getPosition() + sf::Vector2f(10.f, 10.f));
+				break;
+
 			case cellState::HAZARD_DOWN:
 				tank = 1;
 				break;
@@ -292,6 +453,7 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 			case cellState::HAZARD_RIGHT:
 				tank = 4;
 				break;
+
 			}
 			if (tank > 0) {
 				//tank--;

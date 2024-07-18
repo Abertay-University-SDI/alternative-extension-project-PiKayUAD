@@ -278,6 +278,7 @@
     <ClInclude Include="LecturEH.h" />
     <ClInclude Include="Lecturer.h" />
     <ClInclude Include="Level.h" />
+    <ClInclude Include="meteor.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="RunnerLevel.h" />
     <ClInclude Include="StageGrid.h" />

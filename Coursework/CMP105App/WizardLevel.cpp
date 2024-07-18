@@ -207,6 +207,7 @@ void WizardLevel::handleInput(float dt)
 
 void WizardLevel::update(float dt)
 {
+	grid.set_player_pos(playerPosition);
 	// check for win
 	if (playerPosition.first == end.x && playerPosition.second == end.y)
 	{
@@ -532,6 +533,7 @@ void WizardLevel::resetPlayer()
 	player.setDamaged(damagedTimer);
 	selectedAction = NONE;
 	player.setFlipped(false);
+	grid.reset_meteor();
 	deaths++;
 }
 

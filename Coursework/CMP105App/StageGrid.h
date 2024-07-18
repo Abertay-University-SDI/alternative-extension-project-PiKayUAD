@@ -22,7 +22,11 @@ public:
 		HAZARD_RIGHT,
 		START,
 		END,
-		CHECKPOINT
+		CHECKPOINT,
+		METEOR,
+		METEOR_TRAIL1,
+		METEOR_TRAIL2,
+		METEOR_TRAIL3
 	};
 
 	void update(int frames, float dt);
@@ -34,8 +38,13 @@ public:
 	sf::Vector2f getTilePosition(int x, int y);
 	int get_turns();
 
+	void reset_meteor();
+	void set_player_pos(std::pair<int, int>);
+	
+	
 
 private:
+	std::pair<int, int> meteor_pathfind(std::pair<int, int> position);
 	TextureManager* textMan;
 	std::vector<std::vector<cellState>> grid;
 	std::vector<std::vector<GameObject>> board;
@@ -43,7 +52,7 @@ private:
 	sf::Vector2f position;
 
 	float time_elapsed;
-
+	std::pair<int, int> player_position;
 	sf::Texture safe_tile;
 	Animation tile_turn;
 	int turns;
