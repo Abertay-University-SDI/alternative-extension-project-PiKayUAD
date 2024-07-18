@@ -19,3 +19,31 @@ https://kenney.nl/assets
 
 additional art: Kayleigh MacLeod
 
+__________________________________________________________________________________________________________________________________________________
+__________________________________________________________________________________________________________________________________________________
+__________________________________________________________________________________________________________________________________________________
+
+Extension:
+Forbidden Rhythms: Turntable Terror
+
+A simple rhythm game with disorienting features to keep you on your toes
+
+Controls
+WASD to move on grid levels
+Space to jump in the runner level and Enter to kick or ground pound depending on if you're airborne
+
+Student Name: Luis Hayes
+Student Number: 2302886
+Course: GCAD
+
+
+Changelist:
+
+New Runner Move:
+The runner level now features a ground-pound move, complete with wide boxes for you to stomp, a subtle squash & stretch animation, and a thud sound upon landing.
+
+Screen Rotation:
+The wizard level also rotates the stage whenever the controls are jumbled. This rotation is accompanied by an oblique perspective and a whoosh sound on rotation.
+
+The Meteor:
+A new hazard has been added to the wizard level. The meteor will chase you down with the power of pathfinding, and it has a firey tail that you don't want to run into.
