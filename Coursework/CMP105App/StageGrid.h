@@ -51,6 +51,8 @@ private:
 	float cellSize;
 	sf::Vector2f position;
 
+	bool stage1;
+
 	float time_elapsed;
 	std::pair<int, int> player_position;
 	sf::Texture safe_tile;

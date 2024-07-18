@@ -74,9 +74,11 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 
 		}
 		turns = 0;
+		stage1 = true;
 	}
 	if (stage == 2)
 	{
+		stage1 = false;
 		std::vector<std::pair<int, int>> maze;
 		// draw top wall
 		for (int i = 0; i < 5; ++i) maze.push_back({ i, 1 });
@@ -137,15 +139,18 @@ StageGrid::StageGrid(sf::Vector2i dimensions, float cellSizeIn, sf::Vector2f pos
 	}
 	
 	tile_turn.setLooping(false);
+	//tile_turn.setPlaying(true);
 	tile_turn.setFrameSpeed(1.f / 12.f);
 	for (int i = 0; i < 5; ++i)
 	{
 		tile_turn.addFrame(sf::IntRect(i * 135.f, 0.f, 135.f, 135.f));
 		tile_turn.animate(1.f/3.f); //makes the animation start on the last frame due to how this prevents an offset
 	}
-	tile_turn.setLooping(false);
+	
 	
 }
+
+//resets the meteor to the corner when called on death
 void StageGrid::reset_meteor() {
 	for (int x = 0; x < grid.size(); ++x)
 	{
@@ -270,6 +275,10 @@ void StageGrid::update(int frames, float dt)
 	grid = updatedGrid;
 }
 
+
+
+//pathfinding function for the meteor
+//uses djikstra's algorithm
 std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_position) {
 	
 	enum cellSearchState
@@ -284,7 +293,7 @@ std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_positio
 
 	std::vector<std::vector<cellSearchState>>new_grid;
 	
-	
+	//creates copy of list but each cell stores the information of the previous
 	for (int x = 0; x < grid.size(); x++) {
 		std::vector<cellSearchState> row;
 		for (int y = 0; y < grid[0].size(); y++) {
@@ -295,14 +304,14 @@ std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_positio
 	}
 	
 	std::vector<std::pair<int, int>> unfinished_paths;
-	//unfinished_paths.push_back(std::make_pair(1, 1));
 	unfinished_paths.push_back(meteor_position);
 
 	bool path_found = false;
 	
 	while (unfinished_paths.size() > 0 && !path_found) {
+		//checks 4 surrounding tiles and adds them to the breadth first search
 		if (unfinished_paths[0].first + 1 < new_grid.size()) {
-			//std::cout << unfinished_paths[0].first + 1 << ", " << unfinished_paths[0].second << "\n";
+
 			if (new_grid[unfinished_paths[0].first + 1][unfinished_paths[0].second] == UNCHECKED) {
 				new_grid[unfinished_paths[0].first + 1][unfinished_paths[0].second] = RIGHT;
 				unfinished_paths.push_back(std::make_pair(unfinished_paths[0].first + 1, unfinished_paths[0].second));
@@ -328,6 +337,7 @@ std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_positio
 			}
 		}
 		
+		//breaks loop is path is possible, otherwise this isn't the correct cell and is discarded
 		if (unfinished_paths[0] == player_position) {
 			path_found = true;
 		}
@@ -336,9 +346,10 @@ std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_positio
 		}
 	}
 	
-
+	//retraces the path
 	if (path_found) {
 		std::pair<int, int> path_follower = player_position;
+		//2nd copy is to undo last step on last iteration
 		std::pair<int, int> path_follower2 = path_follower;
 		while(path_follower != meteor_position) {
 			switch (new_grid[path_follower.first][path_follower.second])
@@ -363,6 +374,7 @@ std::pair<int, int> StageGrid::meteor_pathfind(std::pair<int,int> meteor_positio
 		}
 		meteor_position = path_follower2;
 	}
+	//returns adjacent tile that's on the right path
 	return meteor_position;
 }
 
@@ -399,7 +411,7 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 	
 	for (int x = 0; x < grid.size(); ++x)
 	{
-		//std:: cout << "overlay pos" << board[x][14].getPosition().y << std::endl;
+		
 		for (int y = 0; y < grid[x].size(); ++y)
 		{
 			if (grid[x][y] == cellState::SAFE) continue;
@@ -440,7 +452,9 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 				cellOverlay.setSize(cellOverlay.getSize() * 0.6f);
 				cellOverlay.setPosition(cellOverlay.getPosition() + sf::Vector2f(10.f, 10.f));
 				break;
+		
 
+			//converts directions to numbers so that they can be offset to match rotation
 			case cellState::HAZARD_DOWN:
 				tank = 1;
 				break;
@@ -456,7 +470,9 @@ void StageGrid::render(sf::RenderWindow* wnd, bool cp_on)
 
 			}
 			if (tank > 0) {
-				//tank--;
+				if (stage1) {
+					tank--;
+				}
 				tank = (tank + turns) % 4;
 				switch (tank)
 				{
